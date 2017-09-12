@@ -23,9 +23,6 @@ int p = 0;
 //typedef unordered_map <vector<int>, int> stateTable;
 
 class node {
-    node* parent;
-    node* child;
-    int depth;
     public:
     char** state;
     bool CheckLizzardSafety(int x, int y){
@@ -70,6 +67,10 @@ class node {
             state[i] = new char[n];
             memcpy(state[i], newState[i], n*sizeof(char));
         }
+    }
+    void delete_mm(){
+        if(state!=NULL) for(int i=0;i<n;i++) if(state[i]!=NULL)delete [] state[i];
+        state= NULL;
     }
 };
 
@@ -123,23 +124,24 @@ void BFS(char** state, int numOfLizzard){
     while(!myQueue.empty()){
         unsigned long length = myQueue.size();
 //        cout<<"length = "<<length<<endl;
+        int rStart = 0;
+        int cStart = 0;
         for(int i = 0; i < length; i++){
             // Insert every child of the front node to the queue:
             node& firstNode= myQueue.front();
-            
-            // Finding out where to start checking the feasibility in order to avoid redundancy
-            int rStart = 0, cStart = 0;
             
             for(int r = n-1; r >= 0; r --){
                 for(int c = n-1; c >= 0 ; c--){
                     if(myQueue.front().state[r][c] == '1'){
                         rStart = r;
                         cStart = c;
+                        break;
                     }
                 }
             }
-            for(int x= rStart; x< n; x++){
-                for(int y = cStart; y < n; y++){
+            for(int x= n-1; x>=0 ; x--){
+                for(int y = n-1; y >= 0; y--){
+                    if(myQueue.front().state[x][y] == '1') break;
                     if(firstNode.CheckLizzardSafety(x, y)){
                         // Passing the check, insert the node into the queue
                         node temp;
@@ -150,9 +152,10 @@ void BFS(char** state, int numOfLizzard){
                 }
             }
             // Pop out the front node
+//            myQueue.front().delete_mm();
             myQueue.pop();
         }
-        
+        cout<<numOfInsertedLizzard<<endl;
         // to the next level of the tree, number of lizzard increased.
         numOfInsertedLizzard++;
         
@@ -171,24 +174,33 @@ void BFS(char** state, int numOfLizzard){
     }
 }
 
-bool DFS(node currentNode, int numOfLizzard, int numOfInsertedLizzard){
-    if(numOfInsertedLizzard > numOfLizzard){
+bool DFS(node& currentNode, int numOfLizzard, int numOfInsertedLizzard){
+    PrintResult(currentNode.state, n);
+    cout<<"numOfInsertedLizzard = "<< numOfInsertedLizzard<<endl;
+    if(numOfInsertedLizzard >= numOfLizzard){
         cout<<"OK"<<endl;
         PrintResult(currentNode.state, n);
+        
         return true;
     }
     else{
-        for(int x = 0; x < n; x++){
-            for(int y = 0; y < n; y++){
+        for(int x = n-1 ; x >= 0; x--){
+            for(int y = n-1; y >= 0; y--){
+                if(currentNode.state[x][y] == '1')
+                    break;
                 if(currentNode.CheckLizzardSafety(x, y)){
                     node newNode;
                     newNode.UpdateState(n, currentNode.state);
                     newNode.state[x][y] = '1';
-                    if (DFS(newNode, numOfLizzard, numOfInsertedLizzard + 1))
+                    if (DFS(newNode, numOfLizzard, numOfInsertedLizzard + 1)){
+//                        newNode.delete_mm();
                         return true;
+                    }
+//                    newNode.delete_mm();
                 }
             }
         }
+        
         return false;
     }
 }
@@ -231,7 +243,7 @@ int main()
         else if(algorithms == "DFS"){
             node temp;
             temp.UpdateState(n, nursery);
-            if(!DFS(temp, p, 1))
+            if(!DFS(temp, p, 0))
                 cout<<"FAIL"<<endl;
         }
         
