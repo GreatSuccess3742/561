@@ -6,7 +6,9 @@
 #include<stdio.h>
 #include<string>
 #include<vector>
-#include <queue>
+#include<queue>
+#include<unordered_map>
+#include<utility>
 
 using namespace std;
 
@@ -17,6 +19,8 @@ int n = 0;
 
 // Number of lizzards
 int p = 0;
+
+//typedef unordered_map <vector<int>, int> stateTable;
 
 class node {
     node* parent;
@@ -78,20 +82,66 @@ void PrintResult(char ** state,int n){
     }
 }
 
+//bool CheckRedundancy(int n, char** state, stateTable myStateTable){
+//    vector<int> myVector;
+//    for(int i = 0; i < n; i++){
+//        for(int j = 0; j < n; j++){
+//            if(state[i][j] == '1'){
+//                myVector.push_back(n*i+j);
+//            }
+//        }
+//    }
+//    //    pair<stateTable::iterator, bool> result = myStateTable.insert(make_pair(myVector, 1));
+//    //    if (result.second)
+//    //    {
+//    //        // the insertion worked and result.first points to the newly
+//    //        // inserted pair
+//    //        return true;
+//    //    }
+//    //    else
+//    //    {
+//    //        // the insertion failed and result.first points to the pair that
+//    //        // was already in the map
+//    //        return false;
+//    //    }
+//    if(myStateTable.insert({myVector , 1}).second)
+//        return true;
+//    else
+//        return false;
+//}
+
 void BFS(char** state, int numOfLizzard){
     queue<node> myQueue;
     int numOfInsertedLizzard = 0;
+    
+    // Initialize a new node:
     node newNode;
     newNode.UpdateState(n, state);
     myQueue.push(newNode);
+    
+    
     while(!myQueue.empty()){
-        unsigned int length = myQueue.size();
-        cout<<"length = "<<length<<endl;
+        unsigned long length = myQueue.size();
+//        cout<<"length = "<<length<<endl;
         for(int i = 0; i < length; i++){
+            // Insert every child of the front node to the queue:
             node& firstNode= myQueue.front();
-            for(int x= 0; x< n; x++){
-                for(int y = 0; y < n; y++){
+            
+            // Finding out where to start checking the feasibility in order to avoid redundancy
+            int rStart = 0, cStart = 0;
+            
+            for(int r = n-1; r >= 0; r --){
+                for(int c = n-1; c >= 0 ; c--){
+                    if(myQueue.front().state[r][c] == '1'){
+                        rStart = r;
+                        cStart = c;
+                    }
+                }
+            }
+            for(int x= rStart; x< n; x++){
+                for(int y = cStart; y < n; y++){
                     if(firstNode.CheckLizzardSafety(x, y)){
+                        // Passing the check, insert the node into the queue
                         node temp;
                         temp.UpdateState(n, firstNode.state);
                         temp.state[x][y] = '1';
@@ -99,17 +149,22 @@ void BFS(char** state, int numOfLizzard){
                     }
                 }
             }
+            // Pop out the front node
             myQueue.pop();
         }
+        
+        // to the next level of the tree, number of lizzard increased.
         numOfInsertedLizzard++;
+        
         if(numOfInsertedLizzard >= numOfLizzard && (!myQueue.empty()) ){
             // Output result
-            cout<<"myq"<<myQueue.size()<<endl;
+//            cout<<"myq.size = "<<myQueue.size()<<endl;
             cout<<"OK"<<endl;
             PrintResult(myQueue.front().state,n);
             break;
         }
-        else{
+        //if FAIL
+        if(numOfInsertedLizzard >= numOfLizzard && (myQueue.empty()) ){
             cout<<"FAIL"<<endl;
             break;
         }
@@ -118,6 +173,7 @@ void BFS(char** state, int numOfLizzard){
 
 bool DFS(node currentNode, int numOfLizzard, int numOfInsertedLizzard){
     if(numOfInsertedLizzard > numOfLizzard){
+        cout<<"OK"<<endl;
         PrintResult(currentNode.state, n);
         return true;
     }
@@ -137,11 +193,11 @@ bool DFS(node currentNode, int numOfLizzard, int numOfInsertedLizzard){
     }
 }
 
+
 int main()
 {
 	string buffer;
 	string algorithms;
-
 
 	fstream inputFile;
 	inputFile.open("/Users/erichsieh/GoogleDrive/561/hw/561/hw1/input.txt", fstream::in );
@@ -153,7 +209,6 @@ int main()
 		getline(inputFile, buffer);
 		p = stoi(buffer);
 		buffer.clear();
-        
         // Map of the nursery
         char** nursery = new char*[n];
         for(int i =0; i < n; i++){
@@ -166,10 +221,23 @@ int main()
                 nursery[i][j] = buffer[j];
             }
         }
-//        BFS(nursery, p);
-        node temp;
-        temp.UpdateState(n, nursery);
-        DFS(temp, p, 1);
+        
+        // BFS
+        if(algorithms == "BFS"){
+            BFS(nursery, p);
+        }
+        
+        // DFS
+        else if(algorithms == "DFS"){
+            node temp;
+            temp.UpdateState(n, nursery);
+            if(!DFS(temp, p, 1))
+                cout<<"FAIL"<<endl;
+        }
+        
+        else{
+            cout<<"plz specify BFS, DFS or SA."<<endl;
+        }
 	}
 	else {
 		perror ("Error opening the file.");
