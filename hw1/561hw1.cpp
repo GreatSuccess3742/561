@@ -77,7 +77,7 @@ class node {
 void PrintResult(char ** state,int n){
     for(int i = 0; i < n; i++){
         for(int j = 0; j < n; j++){
-            cout<<state[i][j]<<" ";
+            cout<<state[i][j];
         }
         cout<<endl;
     }
@@ -123,39 +123,59 @@ void BFS(char** state, int numOfLizzard){
     
     while(!myQueue.empty()){
         unsigned long length = myQueue.size();
-//        cout<<"length = "<<length<<endl;
         int rStart = 0;
         int cStart = 0;
         for(int i = 0; i < length; i++){
             // Insert every child of the front node to the queue:
+    
             node& firstNode= myQueue.front();
-            
+            bool myFlag = false;
             for(int r = n-1; r >= 0; r --){
                 for(int c = n-1; c >= 0 ; c--){
                     if(myQueue.front().state[r][c] == '1'){
                         rStart = r;
                         cStart = c;
+                        myFlag = true;
                         break;
                     }
                 }
+                if(myFlag == true)
+                    break;
             }
-            for(int x= n-1; x>=0 ; x--){
-                for(int y = n-1; y >= 0; y--){
-                    if(myQueue.front().state[x][y] == '1') break;
+            bool firstTime = true;
+            for(int x= rStart; x < n ; x++){
+                for(int y = 0; y < n; y++){
+                    if(firstTime == true) {
+                        y = cStart;
+                        firstTime = false;
+                    }
+                    
                     if(firstNode.CheckLizzardSafety(x, y)){
                         // Passing the check, insert the node into the queue
                         node temp;
-                        temp.UpdateState(n, firstNode.state);
+                        char ** tempState = new char*[n];
+                        for(int i = 0; i < n; i++){
+                            tempState[i] = new char[n];
+                            memset(tempState[i], '\0', sizeof(char));
+                        }
+                        for(int i = 0; i < n; i++){
+                            for(int j = 0; j < n; j++){
+                                tempState[i][j] = firstNode.state[i][j];
+                            }
+                        }
+                        temp.UpdateState(n, tempState);
                         temp.state[x][y] = '1';
+                        
+                        cout<<endl;
                         myQueue.push(temp);
                     }
                 }
             }
+
             // Pop out the front node
-//            myQueue.front().delete_mm();
             myQueue.pop();
         }
-        cout<<numOfInsertedLizzard<<endl;
+        
         // to the next level of the tree, number of lizzard increased.
         numOfInsertedLizzard++;
         
@@ -171,32 +191,62 @@ void BFS(char** state, int numOfLizzard){
             cout<<"FAIL"<<endl;
             break;
         }
+        
+        
+        length = myQueue.size();
     }
 }
-
-bool DFS(node& currentNode, int numOfLizzard, int numOfInsertedLizzard){
-    PrintResult(currentNode.state, n);
-    cout<<"numOfInsertedLizzard = "<< numOfInsertedLizzard<<endl;
+bool DFS(node currentNode, int numOfLizzard, int numOfInsertedLizzard){
+//    cout<<"numOfInsertedLizzard = "<< numOfInsertedLizzard << endl;
     if(numOfInsertedLizzard >= numOfLizzard){
         cout<<"OK"<<endl;
         PrintResult(currentNode.state, n);
-        
+        exit(0);
         return true;
     }
     else{
-        for(int x = n-1 ; x >= 0; x--){
-            for(int y = n-1; y >= 0; y--){
-                if(currentNode.state[x][y] == '1')
+        
+        int rStart = 0;
+        int cStart = 0;
+        bool myFlag = false;
+        
+        for(int i = n-1 ; i >= 0; i-- ){
+            for(int j = n-1 ; j >= 0; j--){
+                if(currentNode.state[i][j] == '1'){
+                    rStart = i;
+                    cStart = j;
+                    myFlag = true;
                     break;
+                }
+            }
+            if(myFlag == true)
+                break;
+        }
+        bool firstTime = true;
+        
+        for(int x = rStart ; x < n; x++){
+            for(int y = 0; y < n; y++){
+                if(firstTime){
+                    y = cStart;
+                    firstTime = false;
+                }
                 if(currentNode.CheckLizzardSafety(x, y)){
                     node newNode;
-                    newNode.UpdateState(n, currentNode.state);
+                    char ** tempState = new char*[n];
+                    for(int i = 0; i < n; i++){
+                        tempState[i] = new char[n];
+                        memset(tempState[i],'\0',sizeof(char));
+                    }
+                    for(int i = 0; i < n; i++){
+                        for(int j = 0; j < n; j++){
+                            tempState[i][j] = currentNode.state[i][j];
+                        }
+                    }
+                    newNode.UpdateState(n, tempState);
                     newNode.state[x][y] = '1';
                     if (DFS(newNode, numOfLizzard, numOfInsertedLizzard + 1)){
-//                        newNode.delete_mm();
                         return true;
                     }
-//                    newNode.delete_mm();
                 }
             }
         }
@@ -225,7 +275,7 @@ int main()
         char** nursery = new char*[n];
         for(int i =0; i < n; i++){
             nursery[i] = new char[n];
-            memset(nursery[i], '\0', n*sizeof(char));
+            memset(nursery[i], '\0', sizeof(char));
         }
         for(int i = 0;i < n; i++){
             getline(inputFile, buffer);
@@ -233,7 +283,8 @@ int main()
                 nursery[i][j] = buffer[j];
             }
         }
-        
+        cout<<"input = "<<endl;
+        PrintResult(nursery, n);
         // BFS
         if(algorithms == "BFS"){
             BFS(nursery, p);
@@ -247,6 +298,10 @@ int main()
                 cout<<"FAIL"<<endl;
         }
         
+        //SA
+        else if(algorithms == "SA"){
+            //do SA stuff
+        }
         else{
             cout<<"plz specify BFS, DFS or SA."<<endl;
         }
