@@ -5,12 +5,14 @@
 #include<fstream>
 #include<cstdio>
 #include<cstring>
+#include<cstdlib>
 #include<vector>
 #include<queue>
 #include<utility>
 #include<time.h>
 #include<map>
-#include <math.h>
+#include<math.h>
+#include<string>
 
 
 using namespace std;
@@ -313,7 +315,7 @@ bool DFS(node currentNode, int numOfLizzard, int numOfInsertedLizzard) {
                     for (int i = 0; i < n; i++) {
                         delete[] tempState[i];
                     }
-                    delete tempState;
+                    delete[] tempState;
                     
                     if (DFS(newNode, numOfLizzard, numOfInsertedLizzard + 1)) {
                         return true;
@@ -528,7 +530,7 @@ void SA(node currentNode, int numOfLizzard, char** originalMap) {
     
     InitInsert(currentNode, numOfLizzard, originalMap);
     
-    map< vector<vector<int>>, int> record;
+    map< vector<vector<int> >, int> record;
     
     int currentE = 0;
     int nextE = 0;
@@ -568,7 +570,7 @@ void SA(node currentNode, int numOfLizzard, char** originalMap) {
         
         nextNode = CreateNextNode(currentNode);
         
-        vector<vector<int>> nextNodeState;
+        vector<vector<int> > nextNodeState;
         
         for (int i = 0; i < n; i++) {
             nextNodeState.push_back(vector<int>());
@@ -577,7 +579,7 @@ void SA(node currentNode, int numOfLizzard, char** originalMap) {
             }
         }
         
-        map<vector<vector<int>>, int>::iterator it;
+        map<vector<vector<int> >, int>::iterator it;
         
         it = record.find(nextNodeState);
         
@@ -642,7 +644,7 @@ void SA(node currentNode, int numOfLizzard, char** originalMap) {
         // Shuffle after certain iteration:
         if (shuffleCount >= 20) {
             shuffleCount = 0;
-            vector<vector<int>> failCase;
+            vector<vector<int> > failCase;
             
             //put the fail case into the record
             for (int i = 0; i < n; i++) {
@@ -680,7 +682,7 @@ int main()
     
     fstream inputFile;
     
-    //inputFile.open("/Users/erichsieh/GoogleDrive/561/hw/561/hw1/input.txt", fstream::in);
+//    inputFile.open("/Users/erichsieh/GoogleDrive/561/hw/561/hw1/input.txt", fstream::in);
     inputFile.open("input.txt", fstream::in);
     outputFile.open("output.txt", fstream::out);
     
@@ -699,6 +701,7 @@ int main()
         buffer.clear();
         // Map of the nursery
         char** nursery = new char*[n];
+        
         for (int i = 0; i < n; i++) {
             nursery[i] = new char[n];
             memset(nursery[i], '\0', n * sizeof(char));
@@ -709,6 +712,21 @@ int main()
                 nursery[i][j] = buffer[j];
             }
         }
+        
+        //check if the number of available grid is greater than the number of lizzards or not
+        int emptyGrid = 0;
+        for(int i = 0; i < n; i++){
+            for(int j = 0; j < n; j++){
+                if(nursery[i][j] == '0')
+                    emptyGrid++;
+            }
+        }
+        
+        if(p > emptyGrid){
+            outputFile<<"FAIL"<<endl;
+            exit(0);
+        }
+            
         // BFS
         if (algorithms == "BFS") {
             time(&startTime);
