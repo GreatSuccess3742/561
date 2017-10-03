@@ -1,0 +1,12 @@
+Total:
+50
+
+Solution found:
+34
+Correct:
+34
+Incorrect:
+0
+
+Solution not found:
+16

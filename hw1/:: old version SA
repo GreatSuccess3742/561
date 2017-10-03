@@ -1,0 +1,80 @@
+// old version SA
+node nextNode;
+	char ** nextState = new char*[n];
+	for (int i = 0; i < n; i++) {
+		nextState[i] = new char[n];
+		memset(nextState[i], '0', n * sizeof(char));
+	}
+	nextNode.UpdateState(n, nextState);
+
+	for (int i = 0; i < n; i++) {
+		RandomInsert(nextNode,i);
+	}
+	
+	int currentE = 0;
+	int nextE = 0;
+	
+	//cout << "nextE = " <<nextE << endl;
+	//PrintResult(nextNode.state, n);
+
+	float T = 100;
+    int count = 0;
+	while (true)
+	{
+        count++;
+		if (T == 0) {
+			PrintResult(currentNode.state, n);
+			break;
+		}
+		nextNode = CreateNextNode();
+		currentE = CheckCost(currentNode, n);
+		nextE = CheckCost(nextNode, n);
+
+		if (nextE == 0) {
+			PrintResult(nextNode.state, n);
+			break;
+		}
+
+
+
+		cout << "currentNode.state = " << endl;
+		PrintResult(currentNode.state, n);
+		cout << "nextNode.state = " << endl;
+		PrintResult(nextNode.state, n);
+
+		
+		float deltaE = (float)nextE - (float)currentE;
+
+		if (deltaE < 0) {
+			char** tempState = new char*[n];
+			for (int i = 0; i < n; i++) {
+				tempState[i] = new char[n];
+				memset(tempState[i], '\0', n * sizeof(char));
+			}
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					tempState[i][j] = nextNode.state[i][j];
+				}
+			}
+			currentNode.UpdateState(n,tempState);
+		}
+		else {
+			if (YorN(exp(-(deltaE) / T))) {
+				char** tempState = new char*[n];
+				for (int i = 0; i < n; i++) {
+					tempState[i] = new char[n];
+					memset(tempState[i], '\0', n * sizeof(char));
+				}
+				for (int i = 0; i < n; i++) {
+					for (int j = 0; j < n; j++) {
+						tempState[i][j] = nextNode.state[i][j];
+					}
+				}
+				currentNode.UpdateState(n, tempState);
+			}
+		}
+		T *= 0.9;
+	}
+    cout<<"count = "<<count<<endl;
+
+	
