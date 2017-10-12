@@ -21,10 +21,18 @@
 
 using namespace std;
 
+int maxDepth = 0;
+int tempGlobalCount = 0;
 
 class MaxValue {
 public:
 	int max;
+	int index;
+};
+
+class MinValue {
+public:
+	int min;
 	int index;
 };
 
@@ -35,7 +43,7 @@ public:
 	int beta;
 	bool MaxOrNot;
 	TreeNode *parent;
-	vector<TreeNode *> child;
+	vector<TreeNode> child;
 	char** board;
 	int** decisionMap;
 	// evaluation value = my score - opponent's score
@@ -46,7 +54,7 @@ public:
 			for (int j = 0; j < n; j++) {
 				if (decisionMap[i][j] != -2) {
 					mySet.insert(decisionMap[i][j]);
-					if (mySet.size() > 1)
+					if (mySet.size() > 0)
 						return false;
 				}
 			}
@@ -71,43 +79,18 @@ TreeNode::TreeNode(int myDepth, int myAlpha, int myBeta, bool myMaxOrNot, char**
 	decisionMap = myDecisionMap;
 	evaluationValue = myEvaluationValue;
 }
-
-int AlphaBeta(TreeNode currentNode, int depth, int alpha, int beta, bool maximizingPlayer, int n) {
-	if (currentNode.TerminalNode(currentNode.decisionMap, n)) {
-		// Return the heuristic value of node
-		if (currentNode.evaluationValue > 0)
-			return 1;
-		else
-			return 0;
-	}
-
-	// Max node
-	if (maximizingPlayer) {
-		for (int i = 0; i < currentNode.child.size(); i++) {
-			// check pointer of currentNode.child[i]
-			currentNode.alpha = max(currentNode.alpha, AlphaBeta(*(currentNode.child[i]), currentNode.depth + 1, currentNode.alpha, currentNode.beta, false, n));
-			if (currentNode.beta <= currentNode.alpha)
-				break;
-		}
-		return currentNode.alpha;
-	}
-
-	// Min node
-	else {
-		for (int i = 0; i < currentNode.child.size(); i++) {
-			currentNode.beta = min(currentNode.beta, AlphaBeta(*(currentNode.child[i]), currentNode.depth + 1, currentNode.alpha, currentNode.beta, true, n));
-			if (currentNode.beta <= currentNode.alpha)
-				break;
-		}
-		return currentNode.beta;
-	}
-
-
-}
 class Coordinate {
 public:
 	int x;
 	int y;
+};
+
+class ReturnInfo {
+public:
+	int alpha;
+	int beta;
+	int decision;
+	int evaluationValue;
 };
 char ** Create2DArray(int n) {
 	char** myArray = new char*[n];
@@ -335,6 +318,208 @@ void ApplyGravity(char** board, int n) {
 		}
 	}
 }
+ReturnInfo AlphaBeta(TreeNode currentNode, int depth, int alpha, int beta, bool maximizingPlayer, int n) {
+	/*cout << "count = " << tempGlobalCount << endl;
+	cout << "maximizingPlayer = " << maximizingPlayer << endl;
+	tempGlobalCount++;*/
+
+	// the 0-1 optimization
+	/*
+	if (currentNode.TerminalNode(currentNode.decisionMap, n)) {
+		// Return the heuristic value of node
+		if (currentNode.evaluationValue > 0)
+			return 1;
+		else
+			return 0;
+	}
+	*/
+
+	// reaches the max depth, return current evaluationValue
+	if (currentNode.depth >= maxDepth) {
+		ReturnInfo temp;
+		
+		return currentNode.evaluationValue;
+	}
+
+	// Max node
+	if (maximizingPlayer) {
+		// constructing all the child node of current max node
+		set<int> choiceCounter;
+
+		// found out how many choices on the board
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (currentNode.decisionMap[i][j] >= 0) {
+					choiceCounter.insert(currentNode.decisionMap[i][j]);
+				}
+			}
+		}
+
+		// Push all posible state into parent node
+		for (int i = 0; i < choiceCounter.size(); i++) {
+			char ** tempBoard = Create2DArray(n);
+			CopyBoard(tempBoard, currentNode.board, n);
+
+			int ** tempDecisionMap = CheckConnectivity(currentNode.board, n);
+			TreeNode choices(0, -INT_MAX, INT_MAX, true, tempBoard, tempDecisionMap, 0);
+
+			currentNode.child.push_back(choices);
+		}
+
+		// find the size of every decision
+		int* connectivityTable = new int[choiceCounter.size()];
+		memset(connectivityTable, 0, choiceCounter.size() * sizeof(int));
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (currentNode.decisionMap[i][j] >= 0)
+					connectivityTable[currentNode.decisionMap[i][j]]++;
+			}
+		}
+		
+		// Sort the decsion in descending order
+		MaxValue myMax;
+		myMax.index = -1;
+		myMax.max = -1;
+
+		vector<int> orderOfDecision;
+		for (int i = 0; i < choiceCounter.size(); i++) {
+			for (int j = 0; j < choiceCounter.size(); j++) {
+				if (connectivityTable[j] > myMax.max) {
+					myMax.max = connectivityTable[j];
+					myMax.index = j;
+				}
+			}
+			orderOfDecision.push_back(myMax.index);
+			connectivityTable[myMax.index] = -1;
+			myMax.index = -1;
+			myMax.max = -1;
+		}
+
+		// Choose the largest connectivity option according to the orderOfDecision
+		int eliminateCount = 0;
+		int descisionCount = 0;
+		descisionCount = orderOfDecision.size();
+		for (int i = 0; i < descisionCount; i++) {
+			for (int rowIndex = 0; rowIndex < n; rowIndex++) {
+				for (int colIndex = 0; colIndex < n; colIndex++) {
+					if (currentNode.child[i].decisionMap[rowIndex][colIndex] == orderOfDecision[i]) {
+						currentNode.child[i].board[rowIndex][colIndex] = '*';
+						eliminateCount++;
+					}
+				}
+			}
+			int score = pow(eliminateCount, 2);
+
+			// MaxNode: Calculating the evaluation value after elimination
+			
+			currentNode.child[i].evaluationValue = currentNode.evaluationValue - score;
+
+			ApplyGravity(currentNode.child[i].board, n);
+			currentNode.child[i].decisionMap = CheckConnectivity(currentNode.child[i].board, n);
+
+			/*cout << "updated decision map:" << endl;
+			PrintDecisionMap(currentNode.child[i].decisionMap, n);*/
+		}
+
+		// A-B pruning
+		for (int i = 0; i < currentNode.child.size(); i++) {
+			currentNode.alpha = max(currentNode.alpha, AlphaBeta(currentNode.child[i], currentNode.depth + 1, currentNode.alpha, currentNode.beta, false, n));
+			if (currentNode.beta <= currentNode.alpha)
+				break;
+		}
+		return currentNode.alpha;
+	}
+
+	// Min node
+	else {
+		// constructing all the child node of current max node
+		set<int> choiceCounter;
+
+		// found out how many choices on the board
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (currentNode.decisionMap[i][j] >= 0) {
+					choiceCounter.insert(currentNode.decisionMap[i][j]);
+				}
+			}
+		}
+
+		// Push all posible state into parent node
+		for (int i = 0; i < choiceCounter.size(); i++) {
+			char ** tempBoard = Create2DArray(n);
+			CopyBoard(tempBoard, currentNode.board, n);
+
+			int ** tempDecisionMap = CheckConnectivity(currentNode.board, n);
+			TreeNode choices(0, -INT_MAX, INT_MAX, true, tempBoard, tempDecisionMap, 0);
+
+			currentNode.child.push_back(choices);
+		}
+
+		// find the size of every decision
+		int* connectivityTable = new int[choiceCounter.size()];
+		memset(connectivityTable, 0, choiceCounter.size() * sizeof(int));
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < n; j++) {
+				if (currentNode.decisionMap[i][j] >= 0)
+					connectivityTable[currentNode.decisionMap[i][j]]++;
+			}
+		}
+
+		// Sort the decsion in ascending order
+		MinValue myMin;
+		myMin.index = INT_MAX;
+		myMin.min = INT_MAX;
+
+		vector<int> orderOfDecision;
+		for (int i = 0; i < choiceCounter.size(); i++) {
+			for (int j = 0; j < choiceCounter.size(); j++) {
+				if (connectivityTable[j] < myMin.min) {
+					myMin.min = connectivityTable[j];
+					myMin.index = j;
+				}
+			}
+			orderOfDecision.push_back(myMin.index);
+			connectivityTable[myMin.index] = -1;
+			myMin.index = -1;
+			myMin.min = -1;
+		}
+
+		// Choose the smallest connectivity option according to the orderOfDecision
+		int eliminateCount = 0;
+		int descisionCount = 0;
+		descisionCount = orderOfDecision.size();
+		for (int i = 0; i < descisionCount; i++) {
+			for (int rowIndex = 0; rowIndex < n; rowIndex++) {
+				for (int colIndex = 0; colIndex < n; colIndex++) {
+					if (currentNode.child[i].decisionMap[rowIndex][colIndex] == orderOfDecision[i]) {
+						currentNode.child[i].board[rowIndex][colIndex] = '*';
+						eliminateCount++;
+					}
+				}
+			}
+			int score = pow(eliminateCount, 2);
+
+			// MinNode: Calculating the evaluation value after elimination
+
+			currentNode.child[i].evaluationValue = currentNode.evaluationValue + score;
+
+			ApplyGravity(currentNode.child[i].board, n);
+			currentNode.child[i].decisionMap = CheckConnectivity(currentNode.child[i].board, n);
+
+			/*cout << "updated decision map:" << endl;
+			PrintDecisionMap(currentNode.child[i].decisionMap, n);*/
+		}
+		// A-B pruning
+		for (int i = 0; i < currentNode.child.size(); i++) {
+			currentNode.beta = min(currentNode.beta, AlphaBeta(currentNode.child[i], currentNode.depth + 1, currentNode.alpha, currentNode.beta, true, n));
+			if (currentNode.beta <= currentNode.alpha)
+				break;
+		}
+		return currentNode.beta;
+	}
+
+
+}
 
 int main(int argc, const char * argv[]) {
 	// insert code here...
@@ -372,6 +557,9 @@ int main(int argc, const char * argv[]) {
 		timeRemained = stof(buffer);
 		buffer.clear();
 
+		// Max depth's value and remaining time should be in inverse proportion
+		maxDepth = 5;
+
 		// Declare board
 		char** board = new char*[n];
 
@@ -386,6 +574,7 @@ int main(int argc, const char * argv[]) {
 			}
 			buffer.clear();
 		}
+
 		vector<TreeNode> superNode;
 
 
@@ -402,7 +591,6 @@ int main(int argc, const char * argv[]) {
 			}
 		}
 
-		cout << choiceCounter.size() << endl;
 
 		// Push all posible state into supernode
 		for (int i = 0; i < choiceCounter.size(); i++) {
@@ -425,9 +613,6 @@ int main(int argc, const char * argv[]) {
 				if (decisionMap[i][j] >= 0)
 					connectivityTable[decisionMap[i][j]]++;
 			}
-		}
-		for (int i = 0; i < choiceCounter.size(); i++) {
-			cout << " " << i << " = " << connectivityTable[i] << endl;
 		}
         
 		// Sort the decsion in descending order
@@ -469,15 +654,20 @@ int main(int argc, const char * argv[]) {
             
             // Calculating the evaluation value after elimination
             superNode[i].evaluationValue += score;
-            
+			
 			ApplyGravity(superNode[i].board, n);
             
+			// after apllying gravity, update the status of decision map
+			superNode[i].decisionMap = CheckConnectivity(superNode[i].board, n);
 		}
-        
-        
 
-
-		//        AlphaBeta()
+		// Apply A-B on all the child of the supernode
+		for (int i = 0; i < superNode.size(); i++) {
+			//cout << "superNode[" << i << "]: " << endl;
+			//PrintBoard(superNode[i].board, n);
+			AlphaBeta(superNode[i], superNode[i].depth, superNode[i].alpha, superNode[i].beta, superNode[i].MaxOrNot, n);
+		}
+		
 	}
 	else {
 		cout << "failed to open input file" << endl;
@@ -488,7 +678,7 @@ int main(int argc, const char * argv[]) {
 	inputFile.close();
 	outputFile.close();
 
-	//	system("pause");
+	system("pause");
 	system("read -n 1 -s -p \"Press any key to continue...\"");
 	return 0;
 }
