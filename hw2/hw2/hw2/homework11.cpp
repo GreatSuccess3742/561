@@ -18,6 +18,7 @@
 #include<set>
 #include<map>
 #include<string> // for VS2017
+#include<limits.h> // INT_MAX and INT_MIN
 
 using namespace std;
 
@@ -43,10 +44,10 @@ public:
     int beta;
     bool MaxOrNot;
     TreeNode *parent;
-    vector<TreeNode> child;
+    vector<TreeNode*> child;
     char** board;
     int** decisionMap;
-    int decision;
+    int decision; // Best Decision
     // evaluation value = my score - opponent's score
     int evaluationValue;
     bool TerminalNode(int** decisionMap, int n) {
@@ -95,6 +96,14 @@ public:
     int evaluationValue;
     bool winLose;
 };
+
+class Answer{
+public:
+    int col;
+    int row;
+};
+
+
 char ** Create2DArray(int n) {
     char** myArray = new char*[n];
     for (int i = 0; i < n; i++) {
@@ -296,8 +305,6 @@ void ApplyGravity(char** board, int n) {
             }
             // Storing all fruits in remainingFruit
             else {
-                PrintBoard(board, n);
-                cout<<board[rowIndex][colIndex]<<endl;
                 remainingFruit.push(board[rowIndex][colIndex]);
             }
         }
@@ -315,289 +322,109 @@ void ApplyGravity(char** board, int n) {
         }
     }
 }
-void PrintNodeInfo(ReturnInfo nodeInfo){
-    cout<<"--------------- Node Info: ---------------- "<<endl;
-    cout<<"alpha = "<<nodeInfo.alpha<<endl;
-    cout<<"beta = "<<nodeInfo.beta<<endl;
-    cout<<"decision = "<<nodeInfo.decision<<endl;
-    cout<<"evaluationValue = "<<nodeInfo.evaluationValue<<endl;
-    cout<<"Win or Lose = "<<nodeInfo.winLose<<endl;
-    cout<<endl;
-}
-
-
-ReturnInfo AlphaBeta(TreeNode currentNode, int depth, int alpha, int beta, bool maximizingPlayer, int decision, int n) {
-    ReturnInfo nodeInfo;
-    nodeInfo.alpha = currentNode.alpha;
-    nodeInfo.beta = currentNode.beta;
-    nodeInfo.decision = currentNode.decision;
-    nodeInfo.evaluationValue = currentNode.evaluationValue;
-    nodeInfo.winLose = false;
+vector<int> FindOrderOfDecision(TreeNode* currentNode, int n){
+    // constructing all the child node of current max node
+    set<int> choiceCounter;
     
-//    PrintNodeInfo(nodeInfo);
-//    cout<<"board = "<<endl;
-//    PrintBoard(currentNode.board, n);
-//    
-//    cout<<"decisionmap = "<<endl;
-//    PrintDecisionMap(currentNode.decisionMap, n);
-    
-    // Reaches the bottom of the tree, where we can determine win or lose
-    if (currentNode.TerminalNode(currentNode.decisionMap, n)) {
-        cout<<"reach terminal node"<<endl;
-        // Return the heuristic value of node
-        if (currentNode.evaluationValue > 0){
-            cout<<"win"<<endl;
-            if(currentNode.MaxOrNot == true){
-                nodeInfo.alpha = currentNode.evaluationValue;
-                cout<<"win nodeInfo.alpha = "<<nodeInfo.alpha<<endl;
+    // found out how many choices on the board
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (currentNode->decisionMap[i][j] >= 0) {
+                choiceCounter.insert(currentNode->decisionMap[i][j]);
             }
-            else{
-                nodeInfo.beta = currentNode.evaluationValue;
-                cout<<"win nodeInfo.beta"<<nodeInfo.beta<<endl;
-            }
-            
-            nodeInfo.winLose = true;
-            return nodeInfo;
-        }
-        else{
-            cout<<"lose"<<endl;
-            if(currentNode.MaxOrNot)
-                nodeInfo.alpha = currentNode.evaluationValue;
-            else
-                nodeInfo.beta = currentNode.evaluationValue;
-            return nodeInfo;
         }
     }
-    // reaches the max depth, return current evaluationValue
-    if (currentNode.depth >= maxDepth) {
-        cout<<"reaches max depth"<<endl;
-        return nodeInfo;
+    // Push all possible state into parent node
+    for (int i = 0; i < choiceCounter.size(); i++) {
+        
+        
+        char ** tempBoard = Create2DArray(n);
+        CopyBoard(tempBoard, currentNode->board, n);
+        
+        int ** tempDecisionMap = CheckConnectivity(currentNode->board, n);
+        
+        TreeNode *choices;
+        choices = new TreeNode(currentNode->depth + 1, currentNode->alpha, currentNode->beta, !(currentNode->MaxOrNot), tempBoard, tempDecisionMap, -1, currentNode->evaluationValue);
+        
+        currentNode->child.push_back(choices);
     }
     
+    // find the size of every decision
+    int* connectivityTable = new int[choiceCounter.size()];
+    memset(connectivityTable, 0, choiceCounter.size() * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (currentNode->decisionMap[i][j] >= 0)
+                connectivityTable[currentNode->decisionMap[i][j]]++;
+        }
+    }
     
+    // Sort the decsion in descending order
+    MaxValue myMax;
+    myMax.index = -1;
+    myMax.max = -1;
     
-    // Max node
-    if (maximizingPlayer) {
-        // constructing all the child node of current max node
-        set<int> choiceCounter;
-        
-        // found out how many choices on the board
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (currentNode.decisionMap[i][j] >= 0) {
-                    choiceCounter.insert(currentNode.decisionMap[i][j]);
-                }
+    vector<int> orderOfDecision;
+    for (int i = 0; i < choiceCounter.size(); i++) {
+        for (int j = 0; j < choiceCounter.size(); j++) {
+            if (connectivityTable[j] > myMax.max) {
+                myMax.max = connectivityTable[j];
+                myMax.index = j;
             }
         }
-        // Push all possible state into parent node
-        for (int i = 0; i < choiceCounter.size(); i++) {
-            
-            
-            char ** tempBoard = Create2DArray(n);
-            CopyBoard(tempBoard, currentNode.board, n);
-            
-            int ** tempDecisionMap = CheckConnectivity(currentNode.board, n);
-
-            TreeNode choices(currentNode.depth + 1, currentNode.alpha, currentNode.beta, false, tempBoard, tempDecisionMap, -1, currentNode.evaluationValue);
-
-            currentNode.child.push_back(choices);
-        }
-        
-        // find the size of every decision
-        int* connectivityTable = new int[choiceCounter.size()];
-        memset(connectivityTable, 0, choiceCounter.size() * sizeof(int));
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (currentNode.decisionMap[i][j] >= 0)
-                    connectivityTable[currentNode.decisionMap[i][j]]++;
-            }
-        }
-        
-        // Sort the decsion in descending order
-        MaxValue myMax;
+        orderOfDecision.push_back(myMax.index);
+        connectivityTable[myMax.index] = -1;
         myMax.index = -1;
         myMax.max = -1;
-        
-        vector<int> orderOfDecision;
-        for (int i = 0; i < choiceCounter.size(); i++) {
-            for (int j = 0; j < choiceCounter.size(); j++) {
-                if (connectivityTable[j] > myMax.max) {
-                    myMax.max = connectivityTable[j];
-                    myMax.index = j;
-                }
-            }
-            orderOfDecision.push_back(myMax.index);
-            connectivityTable[myMax.index] = -1;
-            myMax.index = -1;
-            myMax.max = -1;
-        }
-        
-        // Choose the largest connectivity option according to the orderOfDecision
-        int eliminateCount = 0;
-        int descisionCount = 0;
-        descisionCount = orderOfDecision.size();
-        for (int i = 0; i < descisionCount; i++) {
-            
-            // update decision of the child node
-            currentNode.child[i].decision = orderOfDecision[i];
-            
-            for (int rowIndex = 0; rowIndex < n; rowIndex++) {
-                for (int colIndex = 0; colIndex < n; colIndex++) {
-                    if (currentNode.child[i].decisionMap[rowIndex][colIndex] == orderOfDecision[i]) {
-                        currentNode.child[i].board[rowIndex][colIndex] = '*';
-                        eliminateCount++;
-                    }
-                }
-            }
-            int score = pow(eliminateCount, 2);
-            
-            // MaxNode: Calculating the evaluation value after elimination
-            
-            currentNode.child[i].evaluationValue = currentNode.evaluationValue + score;
-            eliminateCount = 0;
-            
-            ApplyGravity(currentNode.child[i].board, n);
-            currentNode.child[i].decisionMap = CheckConnectivity(currentNode.child[i].board, n);
-            
-        }
-        
-        // A-B pruning
-        for (int i = 0; i < currentNode.child.size(); i++) {
-            ReturnInfo tempInfo;
-            
-            
-            cout<<"123"<<endl;
-            
-            tempInfo = AlphaBeta(currentNode.child[i], currentNode.child[i].depth + 1, currentNode.child[i].alpha, currentNode.child[i].beta, currentNode.child[i].MaxOrNot, currentNode.child[i].decision, n);
-            
-            
-            
-            int previousAlpha = currentNode.alpha;
-            cout<<"currentNode.alpha = "<<currentNode.alpha<<" tempInfo.evaluationValue = "<<tempInfo.evaluationValue<<endl;
-            currentNode.alpha = max(currentNode.alpha, tempInfo.beta);
-            // Check whether currentNode.alpha had been updated or not.
-            // If updated, node.decision should also be updated.
-            if(previousAlpha!=currentNode.alpha){
-                nodeInfo.decision = tempInfo.decision;
-                nodeInfo.winLose = tempInfo.winLose;
-            }
-            if (currentNode.beta <= currentNode.alpha){
-                cout<<"Max node prune."<<endl;
-                break;
-            }
-            
-        }
-        
-        
-        nodeInfo.alpha = currentNode.alpha;
-
-        cout<<"Max Node info"<<endl;
-        PrintNodeInfo(nodeInfo);
-        return nodeInfo;
     }
     
-    // Min node
-    else {
-        // constructing all the child node of current max node
-        set<int> choiceCounter;
-        
-        // found out how many choices on the board
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (currentNode.decisionMap[i][j] >= 0) {
-                    choiceCounter.insert(currentNode.decisionMap[i][j]);
-                }
-            }
-        }
-        
-        // Push all posible state into parent node
-        for (int i = 0; i < choiceCounter.size(); i++) {
-            char ** tempBoard = Create2DArray(n);
-            CopyBoard(tempBoard, currentNode.board, n);
-            int ** tempDecisionMap = CheckConnectivity(currentNode.board, n);
-            TreeNode choices(currentNode.depth + 1, INT_MIN, INT_MAX, true, tempBoard, tempDecisionMap, -1, currentNode.evaluationValue);
-            currentNode.child.push_back(choices);
-        }
-        
-        // find the size of every decision
-        int* connectivityTable = new int[choiceCounter.size()];
-        memset(connectivityTable, 0, choiceCounter.size() * sizeof(int));
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (currentNode.decisionMap[i][j] >= 0)
-                    connectivityTable[currentNode.decisionMap[i][j]]++;
-            }
-        }
-        
-        // Sort the decsion in ascending order
-        MinValue myMin;
-        myMin.index = INT_MAX;
-        myMin.min = INT_MAX;
-        
-        vector<int> orderOfDecision;
-        for (int i = 0; i < choiceCounter.size(); i++) {
-            for (int j = 0; j < choiceCounter.size(); j++) {
-                if (connectivityTable[j] < myMin.min) {
-                    myMin.min = connectivityTable[j];
-                    myMin.index = j;
-                }
-            }
-            orderOfDecision.push_back(myMin.index);
-            connectivityTable[myMin.index] = -1;
-            myMin.index = -1;
-            myMin.min = -1;
-        }
-        
-        // Choose the smallest connectivity option according to the orderOfDecision
-        int eliminateCount = 0;
-        int descisionCount = 0;
-        descisionCount = orderOfDecision.size();
-        for (int i = 0; i < descisionCount; i++) {
-            currentNode.child[i].decision = orderOfDecision[i];
-            for (int rowIndex = 0; rowIndex < n; rowIndex++) {
-                for (int colIndex = 0; colIndex < n; colIndex++) {
-                    if (currentNode.child[i].decisionMap[rowIndex][colIndex] == orderOfDecision[i]) {
-                        currentNode.child[i].board[rowIndex][colIndex] = '*';
-                        eliminateCount++;
-                    }
-                }
-            }
-            int score = pow(eliminateCount, 2);
-            
-            // MinNode: Calculating the evaluation value after elimination
-            
-            currentNode.child[i].evaluationValue = currentNode.evaluationValue - score;
-            score = 0;
-            ApplyGravity(currentNode.child[i].board, n);
-            currentNode.child[i].decisionMap = CheckConnectivity(currentNode.child[i].board, n);
-            
-            /*cout << "updated decision map:" << endl;
-             PrintDecisionMap(currentNode.child[i].decisionMap, n);*/
-        }
-        // A-B pruning
-        for (int i = 0; i < currentNode.child.size(); i++) {
-            ReturnInfo tempInfo;
-            tempInfo = AlphaBeta(currentNode.child[i], currentNode.child[i].depth + 1, currentNode.child[i].alpha, currentNode.child[i].beta, currentNode.child[i].MaxOrNot, currentNode.child[i].decision, n);
-            
-            int previousBeta = currentNode.beta;
-            currentNode.beta = min(currentNode.beta, tempInfo.alpha);
-            if(previousBeta != currentNode.beta){
-                nodeInfo.decision = tempInfo.decision;
-                nodeInfo.winLose = tempInfo.winLose;
-            }
-            if (currentNode.beta <= currentNode.alpha){
-                cout<<"Min node prune."<<endl;
-                break;
-            }
-        }
-        nodeInfo.beta = currentNode.beta;
-        cout<<"Min Node"<<endl;
-        PrintNodeInfo(nodeInfo);
-        return nodeInfo;
-    }
-    
-    
+    return orderOfDecision;
 }
+
+void BranchingCurrentState(TreeNode* currentNode, vector<int> orderOfDecision, int n){
+    int eliminateCount = 0;
+    int decisionCount = 0;
+    decisionCount = orderOfDecision.size();
+    
+    for (int i = 0; i < decisionCount; i++) {
+        
+        // update decision of the child node
+        currentNode->child[i]->decision = orderOfDecision[i];
+        for (int rowIndex = 0; rowIndex < n; rowIndex++) {
+            for (int colIndex = 0; colIndex < n; colIndex++) {
+                if (currentNode->child[i]->decisionMap[rowIndex][colIndex] == orderOfDecision[i]) {
+                    currentNode->child[i]->board[rowIndex][colIndex] = '*';
+                    eliminateCount++;
+                }
+            }
+        }
+        int score = pow(eliminateCount, 2);
+        
+        // Calculating the evaluation value after elimination
+        
+        if(currentNode->child[i]->MaxOrNot)
+            currentNode->child[i]->evaluationValue = currentNode->evaluationValue - score;
+        else
+            currentNode->child[i]->evaluationValue = currentNode->evaluationValue + score;
+        eliminateCount = 0;
+        
+        ApplyGravity(currentNode->child[i]->board, n);
+        currentNode->child[i]->decisionMap = CheckConnectivity(currentNode->child[i]->board, n);
+    }
+}
+void PrintBoardToFile(fstream& outputFile, char** board, int n) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            outputFile << board[i][j];
+        }
+        outputFile << endl;
+    }
+}
+
+
+TreeNode* MaxNodeLevel(TreeNode *myNode, int n);
+TreeNode* MinNodeLevel(TreeNode *myNode, int n);
+Answer FindAnswer(int** decisionMap, int decision, int n);
 
 int main(int argc, const char * argv[]) {
     // insert code here...
@@ -616,7 +443,7 @@ int main(int argc, const char * argv[]) {
     inputFile.open("/Users/erichsieh/GoogleDrive/561/hw/561/hw2/hw2/hw2/input.txt", fstream::in);
     
     // Windows file path
-    // inputFile.open("F:\\Google Drive\\561\\hw\\561\\hw2\\hw2\\hw2\\input.txt", fstream::in);
+    //inputFile.open("F:\\Google Drive\\561\\hw\\561\\hw2\\hw2\\hw2\\input.txt", fstream::in);
     
     outputFile.open("output.txt", fstream::out);
     
@@ -656,24 +483,82 @@ int main(int argc, const char * argv[]) {
         char ** tempBoard = Create2DArray(n);
         CopyBoard(tempBoard, board, n);
         int ** tempDecisionMap = CheckConnectivity(board, n);
+        TreeNode *root = new TreeNode(0, INT_MIN, INT_MAX, true, tempBoard, tempDecisionMap, -1, 0);
+        root = MaxNodeLevel(root, n);
+        PrintDecisionMap(tempDecisionMap, n);
+        Answer ans;
+        ans = FindAnswer(tempDecisionMap, root->decision, n);
+        char col = 'A';
+        col = col + ans.col;
+        outputFile<<col;
+        outputFile<<ans.row+1<<endl;
+        PrintBoardToFile(outputFile, root->board, n);
         
-        TreeNode root(0, INT_MIN, INT_MAX, true, tempBoard, tempDecisionMap, -1, 0);
-        
-        ReturnInfo ans;
-        ans = AlphaBeta(root, 0, INT_MIN, INT_MAX, true, -1, n);
-        cout<<"-----ans-----"<<endl;
-        PrintNodeInfo(ans);
     }
     else {
         cout << "failed to open input file" << endl;
     }
     
-    
-    
     inputFile.close();
     outputFile.close();
     
     //	system("pause");
-    system("read -n 1 -s -p \"Press any key to continue...\"");
+    
     return 0;
+}
+
+TreeNode* MaxNodeLevel(TreeNode *myNode, int n){
+    if(myNode->TerminalNode(myNode->decisionMap, n) || myNode->depth >= maxDepth){
+        return myNode;
+    }
+    
+    vector<int> orderOfDecision;
+    orderOfDecision = FindOrderOfDecision(myNode, n);
+    BranchingCurrentState(myNode, orderOfDecision, n);
+    int opt = 0;
+    for(int i = 0; i < myNode->child.size(); i++){
+        myNode->evaluationValue = max(myNode->evaluationValue, MinNodeLevel(myNode->child[i],n)->beta);
+        if(myNode->evaluationValue > myNode->child[opt]->beta)
+            opt = i;
+        if (myNode->evaluationValue >= myNode->beta)
+            return myNode->child[i];
+        myNode->alpha = max(myNode->alpha, myNode->evaluationValue);
+    }
+    return myNode->child[opt];
+}
+
+TreeNode* MinNodeLevel(TreeNode *myNode, int n) {
+    if(myNode->TerminalNode(myNode->decisionMap, n) || myNode->depth >= maxDepth){
+        return myNode;
+    }
+    vector<int> orderOfDecision;
+    orderOfDecision = FindOrderOfDecision(myNode, n);
+    BranchingCurrentState(myNode, orderOfDecision, n);
+    int opt = 0;
+    for (int i = 0; i < myNode->child.size(); i++) {
+        myNode->evaluationValue = min(myNode->evaluationValue, MaxNodeLevel(myNode->child[i], n)->alpha);
+        if(myNode->evaluationValue < myNode->child[opt]->alpha)
+            opt = i;
+        if (myNode->evaluationValue <= myNode->alpha)
+            return myNode->child[i];
+        myNode->beta = max(myNode->beta, myNode->evaluationValue);
+    }
+    return myNode->child[opt];
+}
+
+
+Answer FindAnswer(int** decisionMap, int decision, int n){
+    Answer myAns;
+    myAns.row = n-1;
+    myAns.col = n-1;
+    for(int i = 0; i < n; i++){
+        for(int j = 0; j < n; j++){
+            if(decisionMap[i][j] == decision){
+                myAns.row = i;
+                myAns.col = j;
+                return myAns;
+            }
+        }
+    }
+    return myAns;
 }
