@@ -31,7 +31,7 @@ double timeUsed = 0;
 double timeLimit = 0;
 float timeRemained = 0;
 char** ansBoard;
-
+int firstDecision = 0;
 
 class MaxValue {
 public:
@@ -263,9 +263,6 @@ void EliminateFruit(char** board, int** decisionMap,int decision, int n){
     ApplyGravity(board, n);
 }
 
-
-TreeNode* MaxNodeLevel(TreeNode *myNode, int n);
-TreeNode* MinNodeLevel(TreeNode *myNode, int n);
 Answer FindAnswer(int** decisionMap, int decision, int n);
 void CopyBoard(char** dstBoard, char** srcBoard, int n);
 int** CheckConnectivity(char** board, int n);
@@ -292,7 +289,7 @@ int main(int argc, const char * argv[]) {
     inputFile.open("/Users/erichsieh/GoogleDrive/561/hw/561/hw2/hw2/hw2/input.txt", fstream::in);
     
     // Windows file path
-    //inputFile.open("F:\\Google Drive\\561\\hw\\561\\hw2\\hw2\\hw2\\input.txt", fstream::in);
+//    inputFile.open("F:\\Google Drive\\561\\hw\\561\\hw2\\hw2\\hw2\\input.txt", fstream::in);
     
     outputFile.open("output.txt", fstream::out);
     
@@ -353,23 +350,9 @@ int main(int argc, const char * argv[]) {
         }
         
         AlphaBetaPruning(tempBoard, n, 0, maxDepth, true, INT_MIN, INT_MAX);
-        cout<<"ans board = "<<endl;
-        PrintBoard(ansBoard, n);
-        exit(0);
-//        TreeNode *root = new TreeNode(0, INT_MIN, INT_MAX, true, tempBoard, tempDecisionMap, -1, 0);
-//        root = MaxNodeLevel(root, n);
-//        
-//        cout<<"root->alpha = "<<root->alpha<<endl;
-//        cout<<"root->beta = "<<root->beta<<endl;
-//        cout<<"root->evaluationValue = "<<root->evaluationValue<<endl;
-//        cout<<"root->decision = "<<root->decision<<endl;
-//        cout<<"root decisionmap"<<endl;
-//        PrintDecisionMap(root->decisionMap, n);
-        
-        
 
         Answer ans;
-//        ans = FindAnswer(tempDecisionMap, root->decision, n);
+        ans = FindAnswer(tempDecisionMap, firstDecision, n);
 //        EliminateFruit(tempBoard, tempDecisionMap, root->decision, n);
         
         char col = 'A';
@@ -378,7 +361,7 @@ int main(int argc, const char * argv[]) {
         outputFile<<ans.row+1<<endl;
         
         
-        PrintBoardToFile(outputFile, tempBoard, n);
+        PrintBoardToFile(outputFile, ansBoard, n);
         
         
     }
@@ -610,7 +593,6 @@ bool TerminalState(char** board, int n) {
     return true;
 }
 TreeNode* EatFruit(char** board, int ** decisionMap, int n){
-    int score = 0;
     
     char ** tempBoard = Create2DArray(n);
     CopyBoard(tempBoard, board, n);
@@ -620,16 +602,7 @@ TreeNode* EatFruit(char** board, int ** decisionMap, int n){
     vector<int> tempOrderOfDecision;
     tempOrderOfDecision = FindOrderOfDecision(tempNode, n);
     BranchingCurrentState(tempNode, tempOrderOfDecision, n);
-//    cout<<"tempNode->child.size() = "<<tempNode->child.size()<<endl;
-//    for(int i = 0; i < tempNode->child.size(); i++){
-//        cout<<"score = "<<tempNode->child[i]->score<<endl;
-//        PrintBoard(tempNode->child[i]->board, n);
-//        cout<<endl;
-//    }
-    
-    
-    
-    
+
     return tempNode;
 }
 
@@ -668,6 +641,7 @@ int AlphaBetaPruning(char** board, int n, int evaluationValue, int depth, bool M
             CopyBoard(tempBoard, child->child[i]->board, n);
             childValue =  AlphaBetaPruning(tempBoard, n, child->child[i]->evaluationValue, depth - 1, !(MaxOrNot), alpha, beta);
             if(childValue > v && depth == maxDepth){
+                firstDecision =  child->child[i]->decision;
                 CopyBoard(ansBoard, tempBoard, n);
             }
             v = max(v,childValue);
