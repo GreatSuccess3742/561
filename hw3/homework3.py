@@ -40,19 +40,20 @@ def Parser(sBuffer):
     # Predicate index
     pIndex = 0
 
+    # Argument index
+    aIndex = 0
+
     mySentence = Sentence()
     myKB.sentence.append(mySentence)
 
     myPredicate = Predicate('')
     myKB.sentence[sIndex].predicate.append(myPredicate)
 
-    myArgument = Argument('','')
-    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
-    exit()
+    
     stack = []
     
 
-    # Check if parsing inside the query or not
+    # Check if parsing inside the bracket or not
     inBracket = False;
 
     for index in range(0,len(sBuffer)):
@@ -60,27 +61,32 @@ def Parser(sBuffer):
         if(sBuffer[index] == '~'):
             # pdb.set_trace()
             stack += sBuffer[index]
-            #stack += sentence[index]
+            
 
         # Upper case letter
         # Push letter into stack
         elif(sBuffer[index].isupper() and sBuffer[index].isalpha()):
-                stack += sBuffer[index]
+            stack += sBuffer[index]
 
         # Lower case letter
         # Push letter into stack
         elif(sBuffer[index].islower() and sBuffer[index].isalpha()):
-                stack += sBuffer[index]
+            stack += sBuffer[index]
 
         # Left Parenthesis, pop content in the stack out as PREDICATE
         # things after Left Praenthesis should be CONSTANT or VARIABLE
         elif(sBuffer[index] == '('):
             inBracket = True
-            tempstack = []
-            tempstack += stack
-            tempPredicate = Predicate(tempstack)
-            print(myKB.sentence[sIndex].predicate[pIndex])
-            exit()
+            tempStack = []
+            tempStack += stack
+            tempPredicate = Predicate(tempStack)
+            if(pIndex == 0):
+                myKB.sentence[sIndex].predicate[pIndex] = tempPredicate
+
+                myArgument = Argument('','')
+                myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+            else:
+            	myKB.sentence[sIndex].predicate.append(tempPredicate)
             stack = []
 
         # Comma: separate the CONSTANT or VARIABLES
@@ -88,45 +94,109 @@ def Parser(sBuffer):
             if(stack[0].islower()):
                 tempStack = []
                 tempStack += stack
-                myArgument = Argument(tempStack,'CONSTANT')
-                print('myArgument = ', myArgument.name,'attribute =',myArgument.attribute)
+                tempArgument = Argument(tempStack,'CONSTANT')
+
+                if(pIndex == 0):
+                    myArgument = Argument('','')
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+
+                    myKB.sentence[sIndex].predicate[pIndex].argument[aIndex] = tempArgument
+                    # print('here = ',myKB.sentence[0].predicate[0].argument[0].name)
+                else:
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
                 stack = []
             elif(stack[0].isupper()):
                 tempStack = []
                 tempStack += stack
                 myArgument = Argument(tempStack,'VARIABLE')
-                print('myArgument = ', myArgument.name,'attribute =',myArgument.attribute)
-                stack = []
 
+                if(pIndex == 0):
+                    myKB.sentence[sIndex].predicate[pIndex].argument[aIndex] = myArgument
+                else:            	
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+                stack = []
+            aIndex += 1
         # Right Parenthesis: ending of predicate
         elif(sBuffer[index] == ')'):
             inBracket = False
-            if(stack[0].islower()):
+            if(stack[0].isupper()):
                 # Insert argument into predicate
                 tempStack = []
                 tempStack += stack
                 myArgument = Argument(tempStack,'CONSTANT')
+                if(pIndex == 0):
+                    myArgument = Argument('','')
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
 
+                    myKB.sentence[sIndex].predicate[pIndex].argument[aIndex] = myArgument
+                else:
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
 
                 stack = []
-            elif(stack[0].isupper()):
+            elif(stack[0].islower()):
                 tempStack = []
                 tempStack += stack
                 myArgument = Argument(tempStack,'VARIABLE')
-                print('myArgument = ', myArgument.name,'attribute =',myArgument.attribute)
+                if(pIndex == 0):
+                    myArgument = Argument('','')
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+
+                    myKB.sentence[sIndex].predicate[pIndex].argument[aIndex] = myArgument
+                else:
+                    myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
                 stack = []
         
         # OR: add another predicate into the sentence
         elif(sBuffer[index] == '|'):
             pIndex += 1
+
+            myPredicate = Predicate('')
+            myKB.sentence[sIndex].predicate.append(myPredicate)
+
+            myArgument = Argument('','')
+            myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+
             print('add predicate, current predicate number = {0}'.format(pIndex))
 
         # EOL
         elif(sBuffer[index] == '\n'):
+
             sIndex += 1
+            pIndex = 0
+
+            # Construct a new sentence holder
+            mySentence = Sentence()
+            myKB.sentence.append(mySentence)
+
+            myPredicate = Predicate('')
+            myKB.sentence[sIndex].predicate.append(myPredicate)
+
+            myArgument = Argument('','')
+            myKB.sentence[sIndex].predicate[pIndex].argument.append(myArgument)
+
             print('add one sentence, current sentence number = {0}'.format(sIndex))
         else:
             print('*******ELSE**********')
+
+    sIndex = 0;
+    pIndex = 0;
+    aIndex = 0;
+    for sentence in myKB.sentence:
+        for predicate in myKB.sentence[sIndex].predicate:
+            print('sentence {0}, predicate {1} = '.format(sIndex, pIndex),myKB.sentence[sIndex].predicate[pIndex].name)
+            for argument in myKB.sentence[sIndex].predicate[pIndex].argument:
+                print('argument = ', myKB.sentence[sIndex].predicate[pIndex].argument[aIndex].name)
+                aIndex += 1
+            pIndex += 1
+            aIndex = 0;
+
+        sIndex += 1
+        pIndex = 0;
+
+    # exit()
+    return myKB
+
+
 
 
 
@@ -150,7 +220,6 @@ if __name__ == '__main__':
                 # sentence.append(input_f.readline())
                 sBuffer += input_f.readline().replace(' ', '')
     input_f.closed
-    sentence = [123]
     # print(query[0])
     # print(sentence)
     # print(len(sentence))
@@ -161,6 +230,4 @@ if __name__ == '__main__':
     
         # print('sentence {0} = '.format(index),sentence[index])
         # print('stack = ', stack)
-    Parser(sBuffer)
-
-
+    myKB = Parser(sBuffer)
